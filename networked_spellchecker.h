@@ -9,14 +9,21 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <iostream>
+#include <cstdlib>
+#include <queue>
+#include <cstdio>
+using namespace std;
 
 // defaults
 #define BUF_LEN 512
 #define DEFAULT_DICTIONARY "dictionary.txt"
+#define DICTIONARY_LENGTH 99171
 #define DEFAULT_LOG "log.txt"
 #define DEFAULT_PORT 1723
 #define NUM_THREADS 5
 #define CAPACITY 500
+
 // function declarations
 int open_listenfd(int);
 

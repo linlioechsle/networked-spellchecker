@@ -85,8 +85,6 @@ node *dequeue(queue* queue) {
 	return tmp;
 }
 
-
-
 // declare global variables
 char** words; // stores all dictionary words
 char* dictionary; // dictionary name
@@ -137,7 +135,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	// read dictionary from file
-	words = read_dictionary(dictionary);
+//	words = read_dictionary(dictionary);
 
 	// create NUM_THREADS number of worker threads
 	// workerThread() is the function that the threads will live in (start routine)
@@ -147,13 +145,12 @@ int main(int argc, char* argv[]) {
 			printf("%s", "error: failed to create worker thread\n");
 			exit(1);
 		}
-		pthread_create(&threads[i], NULL, workerThread, NULL);
 	}
 
 	// create logging thread
 	// logThread() is the function that the log thread will live in (start routine)
 	pthread_create(&logThr, NULL, logThread, NULL);
-
+*/
 //	while (1) {
 //	}
 }

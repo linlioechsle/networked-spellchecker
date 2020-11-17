@@ -1,0 +1,6 @@
+word
+this
+is
+a
+smaller
+file
