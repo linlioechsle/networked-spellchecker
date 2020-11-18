@@ -20,7 +20,7 @@ using namespace std;
 #define DEFAULT_DICTIONARY "dictionary.txt"
 #define DICTIONARY_LENGTH 99171
 #define DEFAULT_LOG "log.txt"
-#define DEFAULT_PORT 1723
+#define DEFAULT_PORT 8888
 #define NUM_THREADS 5
 #define CAPACITY 500
 
