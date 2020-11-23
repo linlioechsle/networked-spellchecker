@@ -90,8 +90,7 @@ int spelledCorrectly (char* input) {
 //Once the descriptor is bound, the listen() call
 //will prepare the socket so that we can call accept() on it
 //and get a connection to a user.
-int open_listenfd(int port)
-{
+int open_listenfd(int port) {
         int listenfd, optval=1;
         struct sockaddr_in serveraddr;
 
@@ -155,14 +154,13 @@ void *workerThread(void *arg) {
 printf("client after popping from jobQueue: %d\n", client);
 
 		// service the client
-		int bytesReturned;
-		char word[CAPACITY] = "";
-
 		while (1) {
+			int bytesReturned;
+			char word[CAPACITY] = "";
+
 			// read word from socket
 			send(client, prompt, strlen(prompt), 0);
 			bytesReturned = recv(client, word, CAPACITY, 0);
-printf("client input: %s\n", word);
 
 			// error check received message
 			if (bytesReturned < 0) {
@@ -173,22 +171,38 @@ printf("client input: %s\n", word);
 			// client disconnected (pressed escape key)
 			if (word[0] == 27) {
 				send(client, closedConnection, strlen(closedConnection), 0);
+				printf("Client has disconnected.\n");
 				close(job.client_socket);
 				break;
-			}
+			} else { // check if word is spelled correctly
+				char result[100] = "";
 
+				// remove two extra chars counted
+				word[strlen(word)-1] = '\0';				
+				word[strlen(word)-1] = '\0';
+
+				// add word to result string
+				strcat(result, word);
+
+				// add newline char to end of client input
+				word[strlen(word)] = '\n';
+
+				int check = spelledCorrectly(word);				
+				if (check == 0) { // mispelled
+					strcat(result, " MISSPELLED\n");
+					send(client, result, strlen(result), 0);
+				} else if (check == 1) { // spelled correctly
+					strcat(result, " OK\n");
+					send(client, result, strlen(result), 0);
+				}
+			}
+			// write word and socket response ("OK" or "MISSPELLED" to log queue
 		}
 
 
 	// close socket
 	// close(job->socket);
-	// check if word is in dictionary
 	// add message to log queue and return message to client
-	// if word is in dictionary
-		// word OK
-	// else
-		// word MISPELLED
-
 	}
 	return arg;
 }
@@ -248,7 +262,6 @@ int main(int argc, char* argv[]) {
 
 		dictionary = argv[2];
 	}
-printf("dictionary name: %s\n", dictionary);
 
 	// read dictionary from file
 	words = read_dictionary(dictionary);
