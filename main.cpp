@@ -133,7 +133,7 @@ void *workerThread(void *arg) {
 	// worker prompt messages
 	const char* prompt = "Enter the word that you would like to spellcheck: ";
 	const char* closedConnection = "Connection with spellchecker has been closed.\n";
-
+	const char* errorReceiving = "There was an issue with receiving your message.\n";
 	// lock job queue
 	while (1) {
 		pthread_mutex_lock(&lock_jobQueue);
@@ -155,14 +155,31 @@ void *workerThread(void *arg) {
 printf("client after popping from jobQueue: %d\n", client);
 
 		// service the client
+		int bytesReturned;
+		char word[CAPACITY] = "";
+
 		while (1) {
 			// read word from socket
-			send(client_socket, prompt, strlen(prompt), 0);
+			send(client, prompt, strlen(prompt), 0);
+			bytesReturned = recv(client, word, CAPACITY, 0);
+printf("client input: %s\n", word);
+
+			// error check received message
+			if (bytesReturned < 0) {
+				send(client, errorReceiving, strlen(errorReceiving), 0);
+				continue;
+			}
+
+			// client disconnected (pressed escape key)
+			if (word[0] == 27) {
+				send(client, closedConnection, strlen(closedConnection), 0);
+				close(job.client_socket);
+				break;
+			}
+
 		}
 
 
-	// read word from socket
-	// check if input indicated EOI
 	// close socket
 	// close(job->socket);
 	// check if word is in dictionary
