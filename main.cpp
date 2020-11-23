@@ -151,7 +151,6 @@ void *workerThread(void *arg) {
 
 		// get client from socket
 		int client = job.client_socket;
-printf("client after popping from jobQueue: %d\n", client);
 
 		// service the client
 		while (1) {
@@ -190,19 +189,33 @@ printf("client after popping from jobQueue: %d\n", client);
 				int check = spelledCorrectly(word);				
 				if (check == 0) { // mispelled
 					strcat(result, " MISSPELLED\n");
-					send(client, result, strlen(result), 0);
 				} else if (check == 1) { // spelled correctly
 					strcat(result, " OK\n");
-					send(client, result, strlen(result), 0);
 				}
-			}
-			// write word and socket response ("OK" or "MISSPELLED" to log queue
+
+				// send result to client
+				send(client, result, strlen(result), 0);
+
+				// lock log buffer
+				pthread_mutex_lock(&lock_logQueue);
+
+				// if log queue is full, wait until there is available space
+				if (logQueue.size() > CAPACITY) {
+					pthread_cond_wait(&logQueueNotFull, &lock_logQueue);
+				}
+
+				// add word and socket response ("OK" or "MISSPELLED") to log queue
+				job.word = strcpy(job.word, result);
+printf("WORD TO BE PUSHED TO LOG: %s\n", job.word);
+				logQueue.push(job);
+
+				// signal that log queue is not empty
+				pthread_cond_signal(&logQueueNotEmpty);
+				// release lock
+				pthread_mutex_unlock(&lock_logQueue);
+				
+			}	
 		}
-
-
-	// close socket
-	// close(job->socket);
-	// add message to log queue and return message to client
 	}
 	return arg;
 }
@@ -231,10 +244,10 @@ void *logThread(void *arg) {
 		log = fopen(DEFAULT_LOG, "a"); // open log file and allow appending
 		fprintf(log, "%s", word);
 		fclose(log);
-// handle also printing out the result of mispelled or correctly spelled on the same line
+
 		// signal sleeping threads on the log condition
 		pthread_cond_signal(&logQueueNotFull);
-		// release the lock
+		// release lock
 		pthread_mutex_unlock(&lock_logQueue);
 	}
 	return arg;
@@ -275,8 +288,7 @@ int main(int argc, char* argv[]) {
 			exit(1);
 		}
 	}
-char* testing = (char*)"cat\n";
-printf("SPELLED CORRECTLY: %d\n", spelledCorrectly(testing));
+
 	// create logging thread
 	// logThread() is the function that the log thread will live in (start routine)
 	pthread_t log;
@@ -286,6 +298,7 @@ printf("SPELLED CORRECTLY: %d\n", spelledCorrectly(testing));
 	struct sockaddr_in client;
 	socklen_t clientLen = sizeof(client);
 	int clientSocket;
+
 	// listens for connection
 	int connectionSocket = open_listenfd(portNum);
 
@@ -302,7 +315,6 @@ printf("SPELLED CORRECTLY: %d\n", spelledCorrectly(testing));
 			printf("%s\n", "Error: could not connect to client");
 			break;
 		}		
-		puts("Connection successful! Client connected.");
 
 		// client messages
 		const char* connected = "Connected to server. Enter a word to begin spellchecking.\n";
@@ -317,6 +329,8 @@ printf("SPELLED CORRECTLY: %d\n", spelledCorrectly(testing));
 			pthread_cond_wait(&jobQueueNotFull, &lock_jobQueue); // thread sleeps until queue is not full
 		}
 
+		puts("Connection successful! Client connected.");
+
 		// if job queue is not full
 		send(clientSocket, connected, strlen(connected), 0);
 
@@ -324,7 +338,7 @@ printf("SPELLED CORRECTLY: %d\n", spelledCorrectly(testing));
 		// create new node, push onto jobQueue
 		Node newJob;
 		newJob.client_socket = clientSocket;
-		newJob.word = NULL;
+		newJob.word = (char*)malloc(100*(sizeof(char*)));
 		newJob.client = client;
 
 		jobQueue.push(newJob);
