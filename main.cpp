@@ -5,7 +5,6 @@ struct Node {
 	int client_socket;
 	char* word;
 	struct sockaddr_in client;
-	struct node *next;
 };
 
 // declare global variables
@@ -131,23 +130,36 @@ int open_listenfd(int port)
 }
 
 void *workerThread(void *arg) {
-	while (1) {
+	// worker prompt messages
+	const char* prompt = "Enter the word that you would like to spellcheck: ";
+	const char* closedConnection = "Connection with spellchecker has been closed.\n";
+
 	// lock job queue
-	pthread_mutex_lock(&lock_jobQueue);
-	// job thread waits if queue is empty
-	if (jobQueue.size == 0) {
-		pthread_cond_wait(&jobQueueNotEmpty, &lock_jobQueue);
-	}
+	while (1) {
+		pthread_mutex_lock(&lock_jobQueue);
+		// job thread waits if queue is empty
+		if (jobQueue.size() == 0) {
+			pthread_cond_wait(&jobQueueNotEmpty, &lock_jobQueue);
+		}
 
-	// dequeue job from jobQueue
-	Node *job = jobQueue.pop();
-	// release lock, signal that job queue is not full
-	pthread_mutex_unlock(&lock_jobQueue);
-	pthread_cond_signal(&jobQueueNotFull);
+		// dequeue job from jobQueue
+		Node job = jobQueue.front();
+		jobQueue.pop();
 
-	// get client from socket
-	int client = job.client_socket;
+		// release lock, signal that there's an empty spot in the queue
+		pthread_mutex_unlock(&lock_jobQueue);
+		pthread_cond_signal(&jobQueueNotFull);
+
+		// get client from socket
+		int client = job.client_socket;
 printf("client after popping from jobQueue: %d\n", client);
+
+		// service the client
+		while (1) {
+			// read word from socket
+			send(client_socket, prompt, strlen(prompt), 0);
+		}
+
 
 	// read word from socket
 	// check if input indicated EOI
@@ -169,12 +181,14 @@ void *logThread(void *arg) {
 		// lock job queue
 		pthread_mutex_lock(&lock_logQueue);
 		// log thread waits if queue is empty
-		while(logQueue.size == 0) {
+		while(logQueue.size() == 0) {
 			pthread_cond_wait(&logQueueNotEmpty, &lock_logQueue);
 		}
 
 		// dequeue element from log
-		Node* entry = logQueue.pop();
+		Node entry = logQueue.front();
+		logQueue.pop();
+
 		char* word = entry.word;
 
 
@@ -255,34 +269,39 @@ printf("SPELLED CORRECTLY: %d\n", spelledCorrectly(testing));
 		// accept new socket connection
 		// error check connection
 		if ((clientSocket = accept(connectionSocket, (struct sockaddr*)&client, &clientLen)) == -1) {
-			printf("%s\n", "error: could not connect to client");
+			printf("%s\n", "Error: could not connect to client");
 			break;
 		}		
 		puts("Connection successful! Client connected.");
 
 		// client messages
-//		char* connected = "Connected to server. Enter a word to begin spellchecking.";
-//		char* fullBuffer = "Job buffer is currently full.";
+		const char* connected = "Connected to server. Enter a word to begin spellchecking.\n";
+		const char* fullBuffer = "Job buffer is currently full.\n";
 
 		// lock job queue
 		pthread_mutex_lock(&lock_jobQueue);
 		// check if job queue is full
 		// if full, queue is locked until jobs are processed and queue is no longer full
-/*		if(jobQueue.size > CAPACITY) {
+		if(jobQueue.size() > CAPACITY) {
 			send(clientSocket, fullBuffer, strlen(fullBuffer), 0); // send buffer full message to client
 			pthread_cond_wait(&jobQueueNotFull, &lock_jobQueue); // thread sleeps until queue is not full
 		}
-*/
+
 		// if job queue is not full
-//		send(clientSocket, connected, strlen(connected), 0);
+		send(clientSocket, connected, strlen(connected), 0);
 
 		// enqueue clientSocket to jobQueue
 		// create new node, push onto jobQueue
-//		jobQueue.push(
+		Node newJob;
+		newJob.client_socket = clientSocket;
+		newJob.word = NULL;
+		newJob.client = client;
+
+		jobQueue.push(newJob);
 
 		// send condition signal to wake sleping worker threads
 		pthread_mutex_unlock(&lock_jobQueue);
-
+		pthread_cond_signal(&jobQueueNotEmpty);
 
 	}
 
