@@ -68,8 +68,14 @@ char** read_dictionary(char* dict) {
 	return words;
 }
 
+int getPort() {
+	int port;
+	printf("%s", "Enter a port number between 1024 and 65535. Enter '1' if you would like to use the default (8888): ");
+	scanf("%d", &port);
+	return port;
+}
+
 // returns 0 if word is not found in dictionary, returns 1 if word is found in dictionary
-// CURRENT ENTRIES MUST HAVE \n IN ORDER TO BE FOUND AS CORRECTLY SPELLED. THIS MUST BE HANDLED.
 int spelledCorrectly (char* input) {
 	// 0 = mispelled, 1 = spelled correctly
 	int index = 0;
@@ -155,7 +161,7 @@ void *workerThread(void *arg) {
 		// service the client
 		while (1) {
 			int bytesReturned;
-			char word[CAPACITY] = "";
+			char word[256] = "";
 
 			// read word from socket
 			send(client, prompt, strlen(prompt), 0);
@@ -206,7 +212,7 @@ void *workerThread(void *arg) {
 
 				// add word and socket response ("OK" or "MISSPELLED") to log queue
 				job.word = strcpy(job.word, result);
-printf("WORD TO BE PUSHED TO LOG: %s\n", job.word);
+				printf("WORD TO BE PUSHED TO LOG: %s", job.word);
 				logQueue.push(job);
 
 				// signal that log queue is not empty
@@ -257,23 +263,25 @@ int main(int argc, char* argv[]) {
 	// array of worker threads
 	pthread_t threads[NUM_THREADS];
 
-	// initialize port and dictionary
-	if (argc == 1) { // use default dictionary
+	int userPort = getPort();
+	if (userPort == 1) {
 		portNum = DEFAULT_PORT;
-		dictionary = (char*)DEFAULT_DICTIONARY;
-	} else if (argc == 2) { // use specified dictionary file
-		portNum = DEFAULT_PORT;
-		dictionary = argv[1];
-	} else { // use specified port and specified dictionary file
-		portNum = atoi(argv[1]);
-
+	} else {
+		portNum = userPort;
 		// error check port number
 		if (portNum < 1024 || portNum > 65535) {
 			printf("%s\n", "Please enter a port number between 1024 and 65535.");
 			exit(1);
 		}
+	}
 
-		dictionary = argv[2];
+	// initialize port and dictionary
+	if (argc == 1) { // use default dictionary
+		dictionary = (char*)DEFAULT_DICTIONARY;
+	} else if (argc == 2) { // use specified dictionary file
+			dictionary = argv[1];
+	} else { // use specified dictionary file and specified port number
+		dictionary = argv[1];
 	}
 
 	// read dictionary from file
@@ -308,8 +316,8 @@ int main(int argc, char* argv[]) {
 	}
 
 	while (1) {
-		puts("waiting for connection");
 		// accept new socket connection
+		puts("waiting for new connection");
 		// error check connection
 		if ((clientSocket = accept(connectionSocket, (struct sockaddr*)&client, &clientLen)) == -1) {
 			printf("%s\n", "Error: could not connect to client");
@@ -324,7 +332,7 @@ int main(int argc, char* argv[]) {
 		pthread_mutex_lock(&lock_jobQueue);
 		// check if job queue is full
 		// if full, queue is locked until jobs are processed and queue is no longer full
-		if(jobQueue.size() > CAPACITY) {
+		if(jobQueue.size() >= CAPACITY) {
 			send(clientSocket, fullBuffer, strlen(fullBuffer), 0); // send buffer full message to client
 			pthread_cond_wait(&jobQueueNotFull, &lock_jobQueue); // thread sleeps until queue is not full
 		}

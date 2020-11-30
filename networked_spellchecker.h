@@ -21,7 +21,7 @@ using namespace std;
 #define DICTIONARY_LENGTH 99171
 #define DEFAULT_LOG "log.txt"
 #define DEFAULT_PORT 8888
-#define NUM_THREADS 5
+#define NUM_THREADS 10
 #define CAPACITY 500
 
 // function declarations
