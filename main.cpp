@@ -70,7 +70,7 @@ char** read_dictionary(char* dict) {
 
 int getPort() {
 	int port;
-	printf("%s", "Enter a port number between 1024 and 65535. Enter '1' if you would like to use the default (8888): ");
+	printf("Enter a port number between 1024 and 65535. Enter '1' if you would like to use the default (%d): ", (int)DEFAULT_PORT);
 	scanf("%d", &port);
 	return port;
 }
@@ -162,7 +162,6 @@ void *workerThread(void *arg) {
 		while (1) {
 			int bytesReturned;
 			char word[256] = "";
-
 			// read word from socket
 			send(client, prompt, strlen(prompt), 0);
 			bytesReturned = recv(client, word, CAPACITY, 0);

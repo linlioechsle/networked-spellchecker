@@ -20,9 +20,9 @@ using namespace std;
 #define DEFAULT_DICTIONARY "dictionary.txt"
 #define DICTIONARY_LENGTH 99171
 #define DEFAULT_LOG "log.txt"
-#define DEFAULT_PORT 8888
+#define DEFAULT_PORT 8088
 #define NUM_THREADS 10
-#define CAPACITY 500
+#define CAPACITY 512
 
 // function declarations
 int open_listenfd(int);
